@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Poster Creator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #f7f9fc;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      padding: 20px;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+    .poster-preview {
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: #eaeaea;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .poster-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    label {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 5px;
+      display: block;
+    }
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    .caption {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: #007bff;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-bottom: 25px;
+    }
+    .btn-primary:hover { background: #0069d9; }
+    .success-text {
+      text-align: center;
+      color: green;
+      font-weight: bold;
+      font-size: 18px;
+      margin: 10px 0 20px;
+    }
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .action-buttons a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      padding: 14px;
+      font-size: 15px;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .download-btn { background: #dc3545; }
+    .new-btn { background: #17a2b8; }
+    .action-buttons a img {
+      width: 20px;
+      height: 20px;
+    }
+    #cropSection, #result { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper" id="step1">
+    <div class="poster-preview">
+      <img id="templatePreview" src="/static/template.png" alt="Poster Preview">
+    </div>
+    <form id="posterForm">
+      <label for="name">Name</label>
+      <input type="text" name="name" id="name" placeholder="Enter your name" required>
+      <label for="photoInput">Upload Photo</label>
+      <input type="file" id="photoInput" accept="image/*" required>
+      <div class="caption">Create and download poster with your own image.</div>
+      <button type="button" class="btn-primary" id="goToCrop">Create</button>
+    </form>
+  </div>
+
+  <div class="wrapper" id="cropSection">
+    <div class="poster-preview">
+      <img id="cropPreview">
+    </div>
+    <button class="btn-primary" id="generateBtn">Generate Poster</button>
+  </div>
+
+  <div class="wrapper" id="result">
+    <div class="poster-preview">
+      <img id="posterImage">
+    </div>
+    <div class="success-text">🎉 Poster Created Successfully</div>
+    <div class="action-buttons">
+      <a id="downloadBtn" class="download-btn" download="poster.png">
+        <img src="/static/download.png" alt="Download"> Download to Gallery
+      </a>
+      <a href="/" class="new-btn">
+        <img src="/static/reload.png" alt="Restart"> Create New Poster
+      </a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.js"></script>
+  <script>
+    let cropper;
+    const photoInput = document.getElementById('photoInput');
+    const cropPreview = document.getElementById('cropPreview');
+    const generateBtn = document.getElementById('generateBtn');
+    const form = document.getElementById('posterForm');
+    const goToCrop = document.getElementById('goToCrop');
+
+    goToCrop.onclick = () => {
+      const name = form.elements['name'].value.trim();
+      const words = name.split(/\s+/);
+      const totalChars = name.replace(/\s+/g, '').length;
+
+      if (words.length > 2) return alert("Please enter only 2 words maximum.");
+      if (totalChars > 14) return alert("Name too long. Maximum 14 letters allowed.");
+
+      const file = photoInput.files[0];
+      if (!file) return alert("Please upload a photo");
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        cropPreview.src = event.target.result;
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropPreview, {
+          aspectRatio: 243 / 249,
+          viewMode: 1,
+          autoCropArea: 1,
+        });
+
+        document.getElementById("step1").style.display = "none";
+        document.getElementById("cropSection").style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    };
+
+    generateBtn.onclick = async () => {
+      if (!cropper) return alert("Please crop your image first.");
+
+      const canvas = cropper.getCroppedCanvas({
+        width: 243,
+        height: 249,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      });
+
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('name', form.elements['name'].value.trim());
+        formData.append('photo', blob, 'cropped.png');
+
+        const res = await fetch("/generate", {
+          method: "POST",
+          body: formData
+        });
+
+        const url = await res.text();
+
+        document.getElementById("cropSection").style.display = "none";
+        document.getElementById("posterImage").src = url;
+        document.getElementById("downloadBtn").href = url;
+        document.getElementById("result").style.display = "block";
+      }, 'image/png');
+    };
+  </script>
+</body>
+</html>
